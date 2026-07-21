@@ -4,10 +4,79 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// admins
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  SUPPORT
+}
+
+model Admin {
+  id             String      @id @default(cuid())
+  fullName       String
+  email          String      @unique
+  passwordHash   String
+
+  role           AdminRole   @default(SUPER_ADMIN)
+
+  isActive       Boolean     @default(true)
+  isVerified     Boolean     @default(true)
+
+  lastLoginAt    DateTime?
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+
+  @@map("admins")
+}
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+
+  adminId     String
+  admin       Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  token       String    @db.Text
+
+  ipAddress   String?
+  userAgent   String?
+
+  expiresAt   DateTime
+  revokedAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([adminId])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+
+  adminId     String
+  admin       Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  action      String
+  module      String
+
+  description String?   @db.Text
+
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([adminId])
+  @@map("audit_logs")
 }
